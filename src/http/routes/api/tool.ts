@@ -1,4 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "http";
+import fs from "fs";
+import path from "path";
 import {
   GetResponseOfIdFromClient,
   SendArbitraryDataToClient,
@@ -268,6 +270,7 @@ export async function POST(req: IncomingMessage, res: ServerResponse): Promise<v
     const dispatchTypes: Record<string, string> = {
       "get-data-by-code": "get-data-by-code",
       "execute": "execute",
+      "execute-file": "execute",
       "search-instances": "search-instances",
       "get-console-output": "get-console-output",
       "get-descendants-tree": "get-descendants-tree",
@@ -276,7 +279,14 @@ export async function POST(req: IncomingMessage, res: ServerResponse): Promise<v
       "get-instance-properties": "get-instance-properties",
       "teleport-player": "teleport-player",
       "set-player-property": "set-player-property",
+      "ensure-remote-spy": "ensure-remote-spy",
+      "get-remote-spy-logs": "get-remote-spy-logs",
+      "clear-remote-spy-logs": "clear-remote-spy-logs",
+      "block-remote": "block-remote",
+      "ignore-remote": "ignore-remote",
       "fire-remote": "fire-remote",
+      "click-button": "click-button",
+      "type-text-box": "type-text-box",
     };
 
     const robloxType = dispatchTypes[type];
@@ -308,6 +318,21 @@ export async function POST(req: IncomingMessage, res: ServerResponse): Promise<v
       return jsonOk(res, { result: "Code dispatched to client." });
     }
 
+    if (type === "execute-file") {
+      const filePath = params.filePath as string;
+      if (!filePath) return jsonErr(res, "Missing 'filePath' parameter.");
+      if (!path.isAbsolute(filePath)) return jsonErr(res, "filePath must be an absolute path.");
+      if (!/\.(lua|luau)$/i.test(filePath)) return jsonErr(res, "Only .lua and .luau files can be executed.");
+      if (!fs.existsSync(filePath)) return jsonErr(res, "File not found.");
+
+      const code = fs.readFileSync(filePath, "utf8");
+      data.source = `setthreadidentity(8);${code}`;
+      const callId = SendArbitraryDataToClient("execute", data, undefined, target.clientId);
+      if (!callId) return jsonErr(res, "Failed to dispatch to client.");
+      if (callId === "INVALID_CLIENT") return jsonErr(res, "Invalid client.");
+      return jsonOk(res, { result: `File dispatched to client: ${filePath}` });
+    }
+
     if (type === "search-instances") {
       const selector = params.selector as string;
       if (!selector) return jsonErr(res, "Missing 'selector' parameter.");
@@ -316,6 +341,25 @@ export async function POST(req: IncomingMessage, res: ServerResponse): Promise<v
       data.limit = Math.min(Number(params.limit) || 50, 100);
     } else if (type === "get-executor-environment") {
       // No extra params
+    } else if (type === "ensure-remote-spy" || type === "clear-remote-spy-logs") {
+      // No extra params
+    } else if (type === "get-remote-spy-logs") {
+      data.direction = params.direction || "Both";
+      data.remoteNameFilter = params.remoteNameFilter || "";
+      data.limit = Math.min(Number(params.limit) || 50, 200);
+      data.maxCallsPerRemote = Math.min(Number(params.maxCallsPerRemote) || 5, 50);
+    } else if (type === "block-remote") {
+      const remoteName = params.remoteName as string;
+      if (!remoteName) return jsonErr(res, "Missing 'remoteName' parameter.");
+      data.remoteName = remoteName;
+      data.direction = params.direction || "Outgoing";
+      data.shouldBlock = params.shouldBlock !== false;
+    } else if (type === "ignore-remote") {
+      const remoteName = params.remoteName as string;
+      if (!remoteName) return jsonErr(res, "Missing 'remoteName' parameter.");
+      data.remoteName = remoteName;
+      data.direction = params.direction || "Outgoing";
+      data.shouldIgnore = params.shouldIgnore !== false;
     } else if (type === "get-instance-properties") {
       if (params.root) data.root = params.root;
       if (params.debugId) data.debugId = params.debugId;
@@ -338,6 +382,21 @@ export async function POST(req: IncomingMessage, res: ServerResponse): Promise<v
       data.path = path;
       data.args = params.args || [];
       data.isFunction = params.isFunction === true;
+    } else if (type === "click-button") {
+      const path = params.path as string;
+      if (!path) return jsonErr(res, "Missing 'path' parameter.");
+      data.path = path;
+      if (params.action) data.action = params.action;
+    } else if (type === "type-text-box") {
+      const path = params.path as string;
+      const text = params.text as string;
+      if (!path) return jsonErr(res, "Missing 'path' parameter.");
+      if (text === undefined) return jsonErr(res, "Missing 'text' parameter.");
+      data.path = path;
+      data.text = text;
+      data.string = text;
+      data.enter = params.enter === true;
+      data.useKeyPress = params.useKeyPress !== false;
     } else if (type === "get-console-output") {
       data.limit = Math.min(Number(params.limit) || 50, 200);
       if (typeof params.logsOrder === "string") data.logsOrder = params.logsOrder;

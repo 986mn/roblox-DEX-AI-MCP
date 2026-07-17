@@ -6,7 +6,7 @@
     <title>Roblox MCP — Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js" defer></script>
@@ -205,18 +205,25 @@
                     <div class="executor-main">
                         <div class="executor-editor-card">
                             <div class="executor-editor-header">
-                                <span>Luau Editor</span>
-                                <div>
+                                <div class="executor-editor-title">
+                                    <span>Luau Editor</span>
+                                    <span class="executor-lsp-pill" id="executorLspStatus">Loading Monaco</span>
+                                </div>
+                                <div class="executor-editor-actions">
+                                    <button class="logs-btn" id="executorFormatBtn">Format</button>
+                                    <button class="logs-btn" id="executorSaveBtn">Save</button>
                                     <button class="logs-btn" id="executorClearBtn">Clear</button>
                                 </div>
                             </div>
-                            <textarea id="executorTextarea" placeholder="-- Enter Luau code to execute...&#10;print(&quot;Hello from anti-gravity dashboard!&quot;)" spellcheck="false"></textarea>
+                            <div id="executorMonaco" aria-label="Luau code editor"></div>
+                            <textarea id="executorTextarea" class="executor-fallback-textarea" placeholder="-- Enter Luau code to execute...&#10;print(&quot;Hello from Roblox MCP dashboard!&quot;)" spellcheck="false"></textarea>
                             <div class="executor-editor-footer">
                                 <div class="executor-editor-footer-left">
                                     <label class="executor-checkbox-label">
                                         <input type="checkbox" id="executorGetReturn">
                                         <span>Get Return Value</span>
                                     </label>
+                                    <input type="text" id="executorFileName" class="executor-file-name" placeholder="script.luau" autocomplete="off">
                                     <span id="executorStatusHint"></span>
                                 </div>
                                 <div>
@@ -594,6 +601,7 @@
         </div>
     </div>
 
+    <script src="/vendor/monaco/vs/loader.js"></script>
     <script src="dashboard.js"></script>
 </body>
 </html>

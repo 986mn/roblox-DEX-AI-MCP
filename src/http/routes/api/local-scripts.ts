@@ -82,10 +82,20 @@ export async function POST(req: IncomingMessage, res: ServerResponse, url: URL):
   }
 
   const safeFile = path.basename(file);
+  if (!/\.(lua|luau)$/i.test(safeFile)) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Only .lua and .luau files can be saved" }));
+    return;
+  }
   const filePath = path.join(USER_SCRIPTS_DIR, safeFile);
 
   try {
     const body = await readJsonBody<{ content: string }>(req);
+    if (typeof body.content !== "string") {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Missing content" }));
+      return;
+    }
     fs.writeFileSync(filePath, body.content, "utf-8");
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ success: true }));

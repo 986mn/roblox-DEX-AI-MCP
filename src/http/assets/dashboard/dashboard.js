@@ -67,6 +67,343 @@ if (scriptsCodeView) scriptsCodeView.addEventListener('scroll', updateCodeOverfl
 window.addEventListener('resize', updateCodeOverflowHint);
 
 let semanticIndexJobId = null;
+let executorEditor = null;
+let executorMonaco = null;
+let executorDiagnosticsTimer = null;
+
+const EXECUTOR_DEFAULT_CODE = '-- Enter Luau code to execute\nprint("Hello from Roblox MCP dashboard!")';
+const LUAU_KEYWORDS = [
+    'and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for', 'function',
+    'if', 'in', 'local', 'nil', 'not', 'or', 'repeat', 'return', 'then',
+    'true', 'until', 'while', 'continue', 'export', 'type', 'typeof',
+];
+const LUAU_GLOBALS = [
+    'game', 'workspace', 'script', 'shared', '_G', 'print', 'warn', 'error',
+    'pairs', 'ipairs', 'next', 'pcall', 'xpcall', 'require', 'select',
+    'tonumber', 'tostring', 'typeof', 'type', 'assert', 'table', 'string',
+    'math', 'task', 'coroutine', 'Vector2', 'Vector3', 'CFrame', 'Color3',
+    'UDim', 'UDim2', 'Enum', 'Instance', 'RaycastParams', 'TweenInfo',
+];
+const LUAU_SERVICES = [
+    'Players', 'ReplicatedStorage', 'Workspace', 'RunService', 'UserInputService',
+    'TweenService', 'HttpService', 'Lighting', 'StarterGui', 'StarterPlayer',
+    'CollectionService', 'ContextActionService', 'Debris', 'Teams', 'SoundService',
+];
+const MONACO_ASSET_BASE = '/vendor/monaco';
+
+function setExecutorLspStatus(text, state = 'ready') {
+    const pill = $('executorLspStatus');
+    if (!pill) return;
+    pill.textContent = text;
+    pill.dataset.state = state;
+}
+
+function getExecutorCode() {
+    if (executorEditor) return executorEditor.getValue();
+    return $('executorTextarea')?.value || '';
+}
+
+function setExecutorCode(code) {
+    const value = code || '';
+    const textarea = $('executorTextarea');
+    if (textarea) textarea.value = value;
+    if (executorEditor && executorEditor.getValue() !== value) {
+        executorEditor.setValue(value);
+    }
+    queueExecutorDiagnostics();
+}
+
+function layoutExecutorEditor() {
+    if (!executorEditor) {
+        initializeExecutorEditor();
+        return;
+    }
+    executorEditor.layout();
+}
+
+function stripLuauStringsAndComments(line) {
+    return line
+        .replace(/--.*$/g, '')
+        .replace(/"([^"\\]|\\.)*"/g, '""')
+        .replace(/'([^'\\]|\\.)*'/g, "''");
+}
+
+function formatLuau(source) {
+    const lines = String(source || '').replace(/\t/g, '    ').split(/\r?\n/);
+    let indent = 0;
+    return lines.map(rawLine => {
+        const trimmed = rawLine.trim();
+        if (!trimmed) return '';
+        if (/^(end|until)\b/.test(trimmed)) indent = Math.max(0, indent - 1);
+        if (/^(else|elseif)\b/.test(trimmed)) indent = Math.max(0, indent - 1);
+        const formatted = '    '.repeat(indent) + trimmed;
+        const clean = stripLuauStringsAndComments(trimmed);
+        if (/\b(function|then|do|repeat)\b/.test(clean) && !/\bend\b/.test(clean)) indent += 1;
+        if (/^(else|elseif)\b/.test(trimmed)) indent += 1;
+        return formatted;
+    }).join('\n');
+}
+
+function validateLuauModel(monaco, model) {
+    if (!monaco || !model) return;
+    const markers = [];
+    const bracketStack = [];
+    const blockStack = [];
+    const pairs = { ')': '(', ']': '[', '}': '{' };
+
+    model.getLinesContent().forEach((line, index) => {
+        const lineNumber = index + 1;
+        const clean = stripLuauStringsAndComments(line);
+        for (let column = 0; column < clean.length; column++) {
+            const char = clean[column];
+            if ('([{'.includes(char)) bracketStack.push({ char, lineNumber, column: column + 1 });
+            if (')]}'.includes(char)) {
+                const last = bracketStack.pop();
+                if (!last || last.char !== pairs[char]) {
+                    markers.push({
+                        severity: monaco.MarkerSeverity.Error,
+                        message: `Unmatched "${char}"`,
+                        startLineNumber: lineNumber,
+                        startColumn: column + 1,
+                        endLineNumber: lineNumber,
+                        endColumn: column + 2,
+                    });
+                }
+            }
+        }
+
+        const lowered = clean.toLowerCase();
+        if (/^\s*(end|until)\b/.test(lowered)) {
+            if (blockStack.length) blockStack.pop();
+            else markers.push({
+                severity: monaco.MarkerSeverity.Warning,
+                message: 'Closing block without a matching opener',
+                startLineNumber: lineNumber,
+                startColumn: Math.max(1, line.search(/\S/) + 1),
+                endLineNumber: lineNumber,
+                endColumn: line.length + 1,
+            });
+        }
+        if (/\b(function|then|do|repeat)\b/.test(lowered) && !/\bend\b/.test(lowered)) {
+            blockStack.push({ lineNumber, column: Math.max(1, line.search(/\S/) + 1) });
+        }
+    });
+
+    bracketStack.slice(-10).forEach(item => {
+        markers.push({
+            severity: monaco.MarkerSeverity.Error,
+            message: `Unclosed "${item.char}"`,
+            startLineNumber: item.lineNumber,
+            startColumn: item.column,
+            endLineNumber: item.lineNumber,
+            endColumn: item.column + 1,
+        });
+    });
+    blockStack.slice(-8).forEach(item => {
+        markers.push({
+            severity: monaco.MarkerSeverity.Hint,
+            message: 'Luau block may need a matching end/until',
+            startLineNumber: item.lineNumber,
+            startColumn: item.column,
+            endLineNumber: item.lineNumber,
+            endColumn: item.column + 1,
+        });
+    });
+    monaco.editor.setModelMarkers(model, 'luau-lsp', markers);
+}
+
+function queueExecutorDiagnostics() {
+    if (!executorMonaco || !executorEditor) return;
+    clearTimeout(executorDiagnosticsTimer);
+    executorDiagnosticsTimer = setTimeout(() => {
+        validateLuauModel(executorMonaco, executorEditor.getModel());
+    }, 150);
+}
+
+function registerLuauLanguage(monaco) {
+    if (monaco.languages.getLanguages().some(lang => lang.id === 'luau')) return;
+    monaco.languages.register({ id: 'luau', extensions: ['.luau', '.lua'], aliases: ['Luau', 'Lua'] });
+    monaco.languages.setLanguageConfiguration('luau', {
+        comments: { lineComment: '--' },
+        brackets: [['(', ')'], ['[', ']'], ['{', '}']],
+        autoClosingPairs: [
+            { open: '(', close: ')' },
+            { open: '[', close: ']' },
+            { open: '{', close: '}' },
+            { open: '"', close: '"' },
+            { open: "'", close: "'" },
+        ],
+    });
+    monaco.languages.setMonarchTokensProvider('luau', {
+        keywords: LUAU_KEYWORDS,
+        globals: LUAU_GLOBALS,
+        tokenizer: {
+            root: [
+                [/--.*/, 'comment'],
+                [/"([^"\\]|\\.)*$/, 'string.invalid'],
+                [/'([^'\\]|\\.)*$/, 'string.invalid'],
+                [/"([^"\\]|\\.)*"/, 'string'],
+                [/'([^'\\]|\\.)*'/, 'string'],
+                [/\b\d+(\.\d+)?\b/, 'number'],
+                [/[a-zA-Z_]\w*/, {
+                    cases: {
+                        '@keywords': 'keyword',
+                        '@globals': 'type.identifier',
+                        '@default': 'identifier',
+                    },
+                }],
+                [/[{}()[\]]/, '@brackets'],
+                [/[<>~=+\-*/%^#]+/, 'operator'],
+            ],
+        },
+    });
+    monaco.editor.defineTheme('roblox-mcp-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+            { token: 'keyword', foreground: 'a78bfa', fontStyle: 'bold' },
+            { token: 'type.identifier', foreground: '60a5fa' },
+            { token: 'string', foreground: '34d399' },
+            { token: 'number', foreground: 'f59e0b' },
+            { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
+        ],
+        colors: {
+            'editor.background': '#070711',
+            'editor.foreground': '#e5e7eb',
+            'editorLineNumber.foreground': '#475569',
+            'editorLineNumber.activeForeground': '#c4b5fd',
+            'editorCursor.foreground': '#a855f7',
+            'editor.selectionBackground': '#7c3aed44',
+            'editor.lineHighlightBackground': '#ffffff06',
+            'editorIndentGuide.background1': '#ffffff10',
+            'editorIndentGuide.activeBackground1': '#a855f755',
+        },
+    });
+    monaco.languages.registerCompletionItemProvider('luau', {
+        triggerCharacters: ['.', ':'],
+        provideCompletionItems() {
+            const suggestions = [
+                ...LUAU_KEYWORDS.map(label => ({ label, kind: monaco.languages.CompletionItemKind.Keyword, insertText: label })),
+                ...LUAU_GLOBALS.map(label => ({ label, kind: monaco.languages.CompletionItemKind.Variable, insertText: label })),
+                ...LUAU_SERVICES.map(service => ({
+                    label: `GetService("${service}")`,
+                    kind: monaco.languages.CompletionItemKind.Snippet,
+                    insertText: `game:GetService("${service}")`,
+                    detail: 'Roblox service',
+                })),
+                {
+                    label: 'LocalPlayer',
+                    kind: monaco.languages.CompletionItemKind.Property,
+                    insertText: 'game:GetService("Players").LocalPlayer',
+                    detail: 'Current player',
+                },
+                {
+                    label: 'task.spawn',
+                    kind: monaco.languages.CompletionItemKind.Function,
+                    insertText: 'task.spawn(function()\n    $0\nend)',
+                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                    detail: 'Luau task thread',
+                },
+            ];
+            return { suggestions };
+        },
+    });
+    monaco.languages.registerHoverProvider('luau', {
+        provideHover(model, position) {
+            const word = model.getWordAtPosition(position);
+            if (!word) return null;
+            const docs = {
+                game: 'Roblox DataModel root. Use `game:GetService("ServiceName")` for services.',
+                task: 'Luau scheduler library with `spawn`, `defer`, `delay`, and `wait`.',
+                Instance: 'Constructor and type namespace for Roblox instances.',
+                Vector3: '3D vector value used for positions, sizes, and directions.',
+                CFrame: 'Coordinate frame value used for position and rotation.',
+            };
+            const doc = docs[word.word];
+            return doc ? { contents: [{ value: doc }] } : null;
+        },
+    });
+    monaco.languages.registerDocumentFormattingEditProvider('luau', {
+        provideDocumentFormattingEdits(model) {
+            return [{
+                range: model.getFullModelRange(),
+                text: formatLuau(model.getValue()),
+            }];
+        },
+    });
+}
+
+function initializeExecutorEditor() {
+    const container = $('executorMonaco');
+    const textarea = $('executorTextarea');
+    if (!container || executorEditor) return;
+    if (!textarea.value) textarea.value = EXECUTOR_DEFAULT_CODE;
+
+    if (typeof window.require !== 'function') {
+        setExecutorLspStatus('Textarea fallback', 'fallback');
+        textarea.classList.remove('executor-fallback-textarea--hidden');
+        return;
+    }
+
+    setExecutorLspStatus('Loading Monaco', 'loading');
+    window.MonacoEnvironment = {
+        getWorkerUrl() {
+            const worker = `self.MonacoEnvironment={baseUrl:'${MONACO_ASSET_BASE}/'};importScripts('${MONACO_ASSET_BASE}/vs/base/worker/workerMain.js');`;
+            return URL.createObjectURL(new Blob([worker], { type: 'text/javascript' }));
+        },
+    };
+    window.require.config({ paths: { vs: `${MONACO_ASSET_BASE}/vs` } });
+    const fallbackTimer = setTimeout(() => {
+        if (!executorEditor) {
+            setExecutorLspStatus('Textarea fallback', 'fallback');
+            textarea.classList.remove('executor-fallback-textarea--hidden');
+        }
+    }, 8000);
+    window.require(['vs/editor/editor.main'], () => {
+        clearTimeout(fallbackTimer);
+        executorMonaco = window.monaco;
+        registerLuauLanguage(executorMonaco);
+        container.classList.add('monaco-ready');
+        textarea.classList.add('executor-fallback-textarea--hidden');
+        executorEditor = executorMonaco.editor.create(container, {
+            value: textarea.value || EXECUTOR_DEFAULT_CODE,
+            language: 'luau',
+            theme: 'roblox-mcp-dark',
+            automaticLayout: true,
+            minimap: { enabled: false },
+            smoothScrolling: true,
+            cursorSmoothCaretAnimation: 'on',
+            fontFamily: 'JetBrains Mono, SF Mono, Fira Code, monospace',
+            fontSize: 13,
+            lineHeight: 21,
+            tabSize: 4,
+            insertSpaces: true,
+            wordWrap: 'on',
+            padding: { top: 16, bottom: 16 },
+            scrollBeyondLastLine: false,
+            roundedSelection: true,
+            renderLineHighlight: 'all',
+            suggest: { showInlineDetails: true },
+        });
+        executorEditor.onDidChangeModelContent(() => {
+            textarea.value = executorEditor.getValue();
+            queueExecutorDiagnostics();
+        });
+        executorEditor.addCommand(executorMonaco.KeyMod.CtrlCmd | executorMonaco.KeyCode.Enter, () => {
+            $('executorRunBtn')?.click();
+        });
+        executorEditor.addCommand(executorMonaco.KeyMod.CtrlCmd | executorMonaco.KeyCode.KeyS, () => {
+            $('executorSaveBtn')?.click();
+        });
+        setExecutorLspStatus('Luau LS active', 'ready');
+        queueExecutorDiagnostics();
+        requestAnimationFrame(() => executorEditor.layout());
+    }, () => {
+        clearTimeout(fallbackTimer);
+        setExecutorLspStatus('Textarea fallback', 'fallback');
+        textarea.classList.remove('executor-fallback-textarea--hidden');
+    });
+}
 
 /* ── Helpers ──────────────────────────────────────────────── */
 function getInitials(name) { return name.slice(0, 2).toUpperCase(); }
@@ -141,7 +478,7 @@ function showView(name) {
     else if (name === 'settings') { targetView = viewSettings; viewSettings.style.display = 'block'; loadSettings(); }
     else if (name === 'overview') { targetView = viewOverview; viewOverview.style.display = 'block'; }
     else if (name === 'console') { targetView = viewConsole; viewConsole.style.display = 'block'; fetchClientLogs(); }
-    else if (name === 'executor') { targetView = viewExecutor; viewExecutor.style.display = 'block'; fetchLocalScripts(); }
+    else if (name === 'executor') { targetView = viewExecutor; viewExecutor.style.display = 'block'; fetchLocalScripts(); setTimeout(layoutExecutorEditor, 30); }
     else if (name === 'tools') { 
         targetView = viewTools;
         viewTools.style.display = 'block'; 
@@ -555,6 +892,105 @@ const toolDefs = {
     },
 };
 
+const toolIcons = {
+    'script-grep': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>',
+    'semantic-search': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+    'execute': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+    'execute-file': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/><path d="M10 13l4 3-4 3z"/></svg>',
+    'get-data-by-code': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+    'search-instances': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>',
+    'get-console-output': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>',
+    'get-descendants-tree': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v12"/><path d="M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M15 6a9 9 0 0 0-9 9"/></svg>',
+    'default': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v10M1 12h6m6 0h10"/></svg>',
+};
+
+function parseBool(value, fallback = false) {
+    if (value === true || value === 'true') return true;
+    if (value === false || value === 'false') return false;
+    return fallback;
+}
+
+function parseVector3(value) {
+    const parts = String(value || '').split(',').map(v => Number(v.trim()));
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return undefined;
+    return { x: parts[0], y: parts[1], z: parts[2] };
+}
+
+function buildToolPayload(type, vals) {
+    const payload = { type };
+    Object.entries(vals).forEach(([key, value]) => {
+        if (value === '' || value === undefined || value === null) return;
+        if (['limit', 'timeout', 'maxDepth', 'maxCallsPerRemote'].includes(key)) payload[key] = parseInt(value, 10) || undefined;
+        else if (['literal', 'caseSensitive', 'isFunction', 'shouldBlock', 'shouldIgnore', 'enter', 'useKeyPress'].includes(key)) payload[key] = parseBool(value);
+        else payload[key] = value;
+    });
+
+    ['coordinates', 'relativeOffset', 'lookAt'].forEach(key => {
+        if (vals[key]) {
+            const parsed = parseVector3(vals[key]);
+            if (parsed) payload[key] = parsed;
+            else delete payload[key];
+        }
+    });
+
+    if (vals.properties) {
+        payload.properties = vals.properties.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (vals.args) {
+        try {
+            const parsedArgs = JSON.parse(vals.args);
+            payload.args = Array.isArray(parsedArgs) ? parsedArgs : [parsedArgs];
+        } catch {
+            payload.args = [vals.args];
+        }
+    }
+    return payload;
+}
+
+function renderToolsList() {
+    const list = $('toolsList');
+    if (!list) return;
+    const entries = Object.entries(toolDefs);
+    let currentCategory = '';
+    list.innerHTML = entries.map(([key, def]) => {
+        const category = def.category || 'Tools';
+        const categoryMarkup = category !== currentCategory
+            ? `<div class="tools-list-category">${escapeHtml(category)}</div>`
+            : '';
+        currentCategory = category;
+        return `${categoryMarkup}<div class="tools-list-item${key === activeTool ? ' active' : ''}" data-tool="${key}">
+            ${toolIcons[key] || toolIcons.default}
+            <span>${escapeHtml(def.name)}</span>
+        </div>`;
+    }).join('');
+    bindToolListListeners();
+}
+
+async function loadToolCatalog() {
+    try {
+        const res = await fetch('/api/tools');
+        const data = await res.json();
+        if (!Array.isArray(data.tools)) return;
+        Object.keys(toolDefs).forEach(key => delete toolDefs[key]);
+        data.tools.forEach(tool => {
+            toolDefs[tool.key] = {
+                name: tool.name,
+                desc: tool.desc,
+                category: tool.category,
+                fields: (tool.fields || []).map(field => ({
+                    ...field,
+                    options: (field.options || []).map(option => [option.value, option.label]),
+                })),
+                buildPayload(vals) { return buildToolPayload(tool.key, vals); },
+            };
+        });
+        renderToolsList();
+        if (activeTool && toolDefs[activeTool]) selectTool(activeTool);
+    } catch (e) {
+        renderToolsList();
+    }
+}
+
 let activeTool = null;
 
 function selectTool(toolKey) {
@@ -599,10 +1035,11 @@ function selectTool(toolKey) {
     }
 }
 
-// Sidebar listeners
-document.querySelectorAll('.tools-list-item').forEach(item => {
-    item.addEventListener('click', () => selectTool(item.dataset.tool));
-});
+function bindToolListListeners() {
+    document.querySelectorAll('.tools-list-item').forEach(item => {
+        item.addEventListener('click', () => selectTool(item.dataset.tool));
+    });
+}
 
 function formatProgress(job) {
     const total = Number(job.total) || 0;
@@ -1750,7 +2187,7 @@ function renderLocalScripts() {
         const activeClass = activeLocalFile === file ? ' active' : '';
         return `<div class="local-script-item${activeClass}" data-file="${escapeHtml(file)}">
             <span class="local-script-name">${escapeHtml(file)}</span>
-            <button class="local-script-run-btn" title="Execute script instantly" onclick="event.stopPropagation(); executeLocalScriptDirectly('${escapeHtml(file)}')">
+            <button class="local-script-run-btn" title="Execute script instantly" data-run-file="${escapeHtml(file)}">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
         </div>`;
@@ -1758,6 +2195,12 @@ function renderLocalScripts() {
 
     list.querySelectorAll('.local-script-item').forEach(el => {
         el.addEventListener('click', () => loadLocalScript(el.dataset.file));
+    });
+    list.querySelectorAll('.local-script-run-btn').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            executeLocalScriptDirectly(btn.dataset.runFile);
+        });
     });
 }
 
@@ -1767,9 +2210,11 @@ async function loadLocalScript(fileName) {
     try {
         const res = await fetch(`/api/local-scripts?file=${encodeURIComponent(fileName)}`);
         const data = await res.json();
-        $('executorTextarea').value = data.content || '';
+        setExecutorCode(data.content || '');
+        $('executorFileName').value = fileName;
         $('executorStatusHint').textContent = `Loaded ${fileName}`;
         $('executorStatusHint').style.color = 'var(--text-secondary)';
+        setTimeout(layoutExecutorEditor, 20);
     } catch (e) {
         showToast('Failed to load local script', 'error');
     }
@@ -1831,21 +2276,59 @@ async function executeCodeOnClient(code, getReturn) {
 }
 
 $('executorRunBtn').addEventListener('click', () => {
-    const code = $('executorTextarea').value;
+    const code = getExecutorCode();
     const getReturn = $('executorGetReturn').checked;
     executeCodeOnClient(code, getReturn);
 });
 
 $('executorClearBtn').addEventListener('click', () => {
-    $('executorTextarea').value = '';
+    setExecutorCode('');
     $('executorOutput').textContent = "No output. Select 'Get Return Value' and return a value to see it here.";
     $('executorStatusHint').textContent = 'Cleared';
     $('executorStatusHint').style.color = 'var(--text-tertiary)';
 });
 
+$('executorFormatBtn').addEventListener('click', async () => {
+    if (executorEditor && executorMonaco) {
+        await executorEditor.getAction('editor.action.formatDocument').run();
+    } else {
+        setExecutorCode(formatLuau(getExecutorCode()));
+    }
+    $('executorStatusHint').textContent = 'Formatted';
+    $('executorStatusHint').style.color = 'var(--text-secondary)';
+});
+
+$('executorSaveBtn').addEventListener('click', async () => {
+    const nameInput = $('executorFileName');
+    let fileName = (nameInput.value || activeLocalFile || 'script.luau').trim();
+    if (!/\.(lua|luau)$/i.test(fileName)) fileName += '.luau';
+    nameInput.value = fileName;
+
+    try {
+        const res = await fetch(`/api/local-scripts?file=${encodeURIComponent(fileName)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: getExecutorCode() }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || 'Save failed');
+        activeLocalFile = fileName;
+        $('executorStatusHint').textContent = `Saved ${fileName}`;
+        $('executorStatusHint').style.color = 'var(--green)';
+        await fetchLocalScripts();
+        showToast('Script saved', 'success');
+    } catch (e) {
+        $('executorStatusHint').textContent = 'Save failed';
+        $('executorStatusHint').style.color = 'var(--red)';
+        showToast(e.message || 'Failed to save script', 'error');
+    }
+});
+
 // Expose direct run helper globally
 window.executeLocalScriptDirectly = executeLocalScriptDirectly;
 
+renderToolsList();
+loadToolCatalog();
 updateStatus();
 setSidebarMode('home');
 showView('clients');
