@@ -1,73 +1,175 @@
-# Roblox MCP Server - Upgrade Walkthrough
+<p align="center">
+  <img src="docs/banner.svg" alt="Roblox Executor MCP" width="900"/>
+</p>
 
-The Roblox MCP Server has been upgraded with five new premium tools, real-time client console log streaming, and two advanced tabs in the dashboard UI.
+# Roblox Executor MCP Server
 
-## Summary of Changes
-
-### 1. New Tools Added
-- **`get-executor-environment`** - Queries the connected executor's available custom APIs (e.g. `getgc`, `hookfunction`, etc.) and lists them as a checklist.
-- **`get-instance-properties`** - Probes and extracts the properties, attributes, and CollectionService tags of any Roblox instance dynamically.
-- **`teleport-player`** - Relocates the LocalPlayer's character to specific coordinates, relative offsets, or to face another player.
-- **`set-player-property`** - Custom character modification: adjust WalkSpeed, JumpPower, JumpHeight, HipHeight, Gravity, and toggle Noclip.
-- **`fire-remote`** - Runs network calls to fire RemoteEvents or invoke RemoteFunctions. Arguments starting with `loadstring:` will execute dynamically on the client to reference active objects.
-
-### 2. Real-Time Client Log Streaming
-- In `connector.luau`, connected `LogService.MessageOut` to capture client-side output logs.
-- Streams Roblox client logs back to the server via WebSockets as they happen.
-- Implemented `/api/client-logs` to query/clear logs on the server side.
-
-### 3. Local Script Hub & Executor Tab
-- Created a `user-scripts/` directory at the project root to store local script files.
-- Implemented `/api/local-scripts` (GET/POST) to save, list, and load files from the server.
-- Added a dedicated **Executor** tab to the client view of the dashboard, allowing you to:
-  - Write Luau code and run it instantly.
-  - Check "Get Return Value" to yield for the output and display it in the custom console log.
-  - Load and run scripts from the `user-scripts/` directory with a single click.
-
-### 4. Client Console View
-- Added a dedicated **Console** tab to the client view of the dashboard that streams the client's output logs in real-time, colored by log level (Info, Warning, Error).
+An advanced Model Context Protocol (MCP) server that allows AI agents to interact with running Roblox game clients. This server enables code execution, script decompilation, instance hierarchy querying, remote event spying and firing, and real-time log streaming.
 
 ---
 
-## File Diffs
+## 🚀 Key Features
 
-All changes compile cleanly and have been integrated into the server and client codebase.
-
-### Backend Routing & Registration
-- [get-executor-environment.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/tools/impl/inspection/get-executor-environment.ts) (NEW)
-- [get-instance-properties.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/tools/impl/inspection/get-instance-properties.ts) (NEW)
-- [teleport-player.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/tools/impl/execution/teleport-player.ts) (NEW)
-- [set-player-property.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/tools/impl/execution/set-player-property.ts) (NEW)
-- [fire-remote.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/tools/impl/remote-spy/fire-remote.ts) (NEW)
-- [client-logs.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/http/client-logs.ts) (NEW)
-- [client-logs.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/http/routes/api/client-logs.ts) (NEW)
-- [local-scripts.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/http/routes/api/local-scripts.ts) (NEW)
-- [index.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/tools/index.ts) (MODIFIED)
-- [tool.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/http/routes/api/tool.ts) (MODIFIED)
-- [_ws-fallback.ts](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/http/routes/_ws-fallback.ts) (MODIFIED)
-
-### Roblox Client Code
-- [connector.luau](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/connector.luau) (MODIFIED)
-
-### Dashboard Frontend
-- [index.html](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/http/assets/dashboard/index.html) (MODIFIED)
-- [dashboard.css](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/http/assets/dashboard/dashboard.css) (MODIFIED)
-- [dashboard.js](file:///C:/Users/Tareq/Desktop/roblox-mcp-main/src/http/assets/dashboard/dashboard.js) (MODIFIED)
+* **Code Execution** — Run Luau code on the client dynamically, with optional return value yielding.
+* **Script Inspection** — Decompile scripts, search across sources, and perform semantic searches.
+* **Instance Search & Manipulation** — Use CSS-like selectors, traverse the instance hierarchy tree, and query dynamic properties/attributes.
+* **Remote Spy & Fire** — Intercept, log, block, ignore, and fire `RemoteEvents` / `RemoteFunctions` (backed by [Cobalt](https://github.com/notpoiu/cobalt)).
+* **Real-Time Log Streaming** — Capture client console outputs dynamically via WebSockets and view them live.
+* **GUI Interaction** — Automate input by clicking buttons and typing text into UI elements.
+* **OS Integrations** — Retrieve list of Roblox processes and capture client window screenshots (Windows only).
+* **Multi-Client Routing** — Coordinate between multiple running clients with automatic Primary/Secondary promotion and relaying.
+* **Local Script Hub** — Save, load, and execute pre-configured Luau scripts.
 
 ---
 
-## Verification & Testing
+## 🖥️ Local Web Dashboard
 
-1. Compilation is validated using `tsc`:
-   ```bash
-   npm run build
-   ```
-   The build completed successfully and copied all updated frontend assets to `dist/http/assets/`.
-2. Connect your Roblox client to `localhost:16384` using the loader script:
-   ```lua
-   loadstring(game:HttpGet("http://localhost:16384/script.luau"))()
-   ```
-3. Open `http://localhost:16384` in your browser. Select the client and verify:
-   - **Executor Tab**: Write Luau code or run the pre-installed `fly.luau` or `noclip.luau` scripts.
-   - **Console Tab**: Check live prints and warnings streamed directly from your game client.
-   - **Tools Tab**: Fire new tools dynamically.
+The Roblox Executor MCP includes a rich, responsive local web dashboard hosted at:
+```text
+http://localhost:16384/
+```
+
+Use the dashboard to monitor connected clients, debug executables, and inspect games:
+1. **Console Tab** *(New)*: A real-time stream of the Roblox client console logs (`LogService.MessageOut`), color-coded by log levels: **Info (White)**, **Warning (Yellow)**, and **Error (Red)**.
+2. **Executor Tab** *(New)*: A developer-focused suite to write Luau code directly, toggle **"Get Return Value"** to yield and print results, and instantly execute scripts saved in the `user-scripts/` hub.
+3. **Tools Tab**: A control center to run all registered MCP tools manually and review inputs/outputs.
+4. **Scripts Tab**: Explore local and decompiled scripts, search sources, index game hierarchies, and set up semantic vector search.
+
+---
+
+## 🛠️ Complete Tool Catalog
+
+The server registers a comprehensive list of tools for connected AI agents:
+
+### 1. Client Management
+* `list-clients` — Lists all currently connected Roblox game clients.
+* `set-active-client` — Selects the active target client for subsequent tool operations.
+
+### 2. Execution Tools
+* `execute` — Executes raw Luau code on the active Roblox client.
+* `execute-file` — Executes a Luau file from the server's local path.
+* `teleport-player` *(New)* — Relocates the player to specific coordinates, offsets, or target players.
+* `set-player-property` *(New)* — Modifies character stats (e.g., WalkSpeed, JumpPower, HipHeight, Gravity) or toggles Noclip.
+
+### 3. Inspection & Search Tools
+* `get-script-content` — Retrieves the source/decompiled code of a specific script.
+* `get-data-by-code` — Queries client metadata using a Luau lookup script.
+* `get-console-output` — Returns the history of client console prints and warnings.
+* `search-instances` — Finds instances using selectors or names.
+* `get-descendants-tree` — Dumps the child hierarchy tree of a specific instance.
+* `script-grep` — Performs text searches across all loaded script sources.
+* `semantic-search-scripts` — Performs vector-based search on script contents (requires Ollama setup).
+* `get-game-info` — Queries game details (e.g., PlaceId, JobId, Player count).
+* `get-executor-environment` *(New)* — Returns a checklist of custom APIs supported by the connected Roblox executor (e.g., `getgc`, `hookfunction`).
+* `get-instance-properties` *(New)* — Probes attributes, CollectionService tags, and properties of an instance dynamically.
+
+### 4. Remote Spy & Network Tools
+* `ensure-remote-spy` — Starts the Cobalt-backed remote spy pipeline.
+* `get-remote-spy-logs` — Retreives captured remote calls.
+* `clear-remote-spy-logs` — Clears captured logs.
+* `block-remote` — Blocks a specific RemoteEvent or RemoteFunction.
+* `ignore-remote` — Filters a remote out of the active log stream.
+* `fire-remote` *(New)* — Fires a RemoteEvent or invokes a RemoteFunction. Supports dynamically evaluated arguments starting with `loadstring:`.
+
+### 5. GUI & OS Tools
+* `click-button` — Fires clicks on specific GUI buttons on the screen.
+* `type-text-box` — Focuses and sends text inputs to game TextBoxes.
+* `list-roblox-windows` — Lists active Roblox OS window handles.
+* `screenshot-window` — Caps and saves screenshots of the game client (Windows only).
+
+---
+
+## 📋 Prerequisites
+
+* **Node.js** ≥ 18
+* **Bun** ≥ 1.3 (used for the interactive OpenTUI harness installer)
+* **Roblox Executor** — Any executor supporting `loadstring`, `request`, and (preferably) `WebSocket`.
+
+---
+
+## ⚡ Quick Start
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/notpoiu/roblox-executor-mcp.git
+cd roblox-executor-mcp
+```
+
+### 2. Run the Harness Installer
+The installer handles server building, configuration generation for your AI client of choice, and prints your loader script:
+```bash
+npm run install:harnesses
+```
+
+> [!TIP]
+> If your terminal has issues rendering the interactive OpenTUI picker, run it in plain-text prompt mode:
+> ```bash
+> npm run install:harnesses -- --plain
+> ```
+
+To automatically place the Roblox loader into the `autoexec` folder of a detected executor (e.g. MacSploit, or supported Windows executors), run:
+```bash
+npm run getscript -- --autoexec
+```
+
+### 3. Connect from Roblox
+Paste this script into your executor or place it in your `autoexec` folder:
+```lua
+local bridgeUrl = getgenv().BridgeURL or "localhost:16384"
+loadstring(game:HttpGet("http://" .. bridgeUrl .. "/script.luau"))()
+```
+
+#### Optional Environment Configuration
+Configure these globals *before* running the loader script to customize behavior:
+```lua
+getgenv().BridgeURL = "10.0.0.4:16384"                  -- Default: localhost:16384
+getgenv().DisableWebSocket = true                        -- Forces HTTP fallback polling
+getgenv().DisableInitialScriptDecompMapping = true       -- Skips initial project script indexing
+```
+
+---
+
+## ⚙️ Client Configuration & Manual Setup
+
+If you prefer to configure your AI interface manually, refer to the guides below:
+
+| Client | Configuration Guide |
+|---|---|
+| **Cursor** | [Setup Guide](docs/setup-cursor.md) |
+| **Claude Desktop** | [Setup Guide](docs/setup-claude-desktop.md) |
+| **Claude Code** | [Setup Guide](docs/setup-claude-code.md) |
+| **Codex CLI** | [Setup Guide](docs/setup-codex.md) |
+| **Windsurf** | [Setup Guide](docs/setup-windsurf.md) |
+| **Antigravity** | [Setup Guide](docs/setup-antigravity.md) |
+
+---
+
+## 🛠️ Developer Commands
+
+Maintain, run, or update the server using these project scripts:
+
+* **Build the project** (compiles TypeScript and copies assets to `dist/`):
+  ```bash
+  npm run build
+  ```
+* **Start the server**:
+  ```bash
+  npm run start
+  ```
+* **Update existing install** (pulls updates, stops running processes, and rebuilds):
+  ```bash
+  npm run update
+  ```
+
+---
+
+## 🔒 Security & Safe Operation
+
+> [!CAUTION]
+> **This server allows arbitrary local code execution.** Only connect trusted AI clients. Port `16384` does not enforce authentication—**never expose this port to the public internet**. For cross-machine or LAN setups, secure connections with a local VPN or an SSH tunnel.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
