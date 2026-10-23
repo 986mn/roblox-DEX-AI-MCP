@@ -11,10 +11,10 @@ If your AI client runs on macOS/Linux but Roblox is on a Windows machine, you ca
 ```json
 {
   "mcpServers": {
-    "roblox-executor-mcp": {
+    "roblox-dex-ai-mcp": {
       "command": "node",
       "args": [
-        "/path/to/roblox-executor-mcp/dist/index.js",
+        "/path/to/roblox-dex-ai-mcp/dist/index.js",
         "--baseurl",
         "http://<windows-ip>:16384"
       ]

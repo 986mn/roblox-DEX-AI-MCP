@@ -14,23 +14,23 @@ Add or merge the following into your config:
 ```json
 {
   "mcpServers": {
-    "roblox-executor-mcp": {
+    "roblox-dex-ai-mcp": {
       "command": "node",
-      "args": ["/path/to/roblox-executor-mcp/dist/index.js"]
+      "args": ["/path/to/roblox-dex-ai-mcp/dist/index.js"]
     }
   }
 }
 ```
 
-Replace `/path/to/roblox-executor-mcp` with the actual path where you cloned the repo.
+Replace `/path/to/roblox-dex-ai-mcp` with the actual path where you cloned the repo.
 
 **Windows example:**
 ```json
 {
   "mcpServers": {
-    "roblox-executor-mcp": {
+    "roblox-dex-ai-mcp": {
       "command": "node",
-      "args": ["C:\\Users\\YourName\\roblox-executor-mcp\\dist\\index.js"]
+      "args": ["C:\\Users\\YourName\\roblox-dex-ai-mcp\\dist\\index.js"]
     }
   }
 }
@@ -42,7 +42,7 @@ Fully quit and reopen Claude Desktop for changes to take effect.
 
 ## Verify
 
-Click the MCP icon (hammer) in the chat input area. You should see `roblox-executor-mcp` listed with its tools. If it doesn't appear:
+Click the MCP icon (hammer) in the chat input area. You should see `roblox-dex-ai-mcp` listed with its tools. If it doesn't appear:
 
 - Make sure you ran `pnpm install && pnpm run build` first
 - Check that the path in the config is correct

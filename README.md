@@ -117,6 +117,28 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/986mn/roblox-DEX-AI-M
 
 ### 4. Configure your AI client
 
+**One command does it:**
+
+```bash
+npm run install:mcp
+```
+
+It detects which clients you have (Claude Desktop, Cursor, Windsurf, Antigravity,
+Claude Code, Codex CLI, VS Code), shows a numbered list, and writes the entry into
+each config file. It **merges** — everything already in those files is preserved,
+and a `.bak` is kept on first write.
+
+Non-interactive variants:
+
+```bash
+npm run install:mcp -- --all                  # every detected client
+npm run install:mcp -- --client cursor,codex  # specific ones
+npm run install:mcp -- --print                # show the JSON, write nothing
+npm run install:mcp -- --remove               # undo
+```
+
+**Or add it by hand:**
+
 ```json
 {
   "mcpServers": {
@@ -127,6 +149,18 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/986mn/roblox-DEX-AI-M
   }
 }
 ```
+
+| Client | Config location |
+|---|---|
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) / `%APPDATA%\Claude\claude_desktop_config.json` (Win) |
+| Cursor | `~/.cursor/mcp.json` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+| Antigravity | `~/.gemini/antigravity/mcp_config.json` |
+| Claude Code | `~/.claude.json` — or `claude mcp add roblox-dex-ai-mcp -- node <repo>/dist/index.js` |
+| Codex CLI | `~/.codex/config.toml` (TOML, not JSON) |
+| VS Code | `~/.vscode/mcp.json` |
+
+Restart the client afterwards. Per-client notes are printed by the installer.
 
 ---
 

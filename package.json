@@ -1,29 +1,69 @@
 {
-  "name": "roblox-mcp-server",
-  "version": "1.0.0",
-  "description": "An MCP server for interacting with Roblox Game Clients",
+  "name": "roblox-dex-ai-mcp",
+  "version": "1.1.0",
+  "description": "DEX-first Roblox AI bridge: the AI reads what you select in DEX and can drive DEX selection/execution from the other side. MCP server + ready-to-run DEX builds.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
+    "roblox-dex-ai-mcp": "dist/index.js",
     "roblox-mcp": "dist/index.js"
   },
   "files": [
     "dist",
     "connector.luau",
-    "README.md"
+    "dex.lua",
+    "dex_mcp_A.lua",
+    "dex_mcp_B.lua",
+    "dex_mcp_C.lua",
+    "builds",
+    "scripts/install-mcp.mjs",
+    "scripts/install-harnesses.mjs",
+    "scripts/clean-dist.mjs",
+    "scripts/copy-assets.mjs",
+    "README.md",
+    "README.zh-CN.md",
+    "DEX_README.md",
+    "DEX_README.zh-CN.md",
+    "docs",
+    "keepalive.sh",
+    "LICENSE"
   ],
   "scripts": {
     "build": "node scripts/clean-dist.mjs && tsc && node scripts/copy-assets.mjs",
     "install:harness": "node scripts/install-harnesses.mjs",
     "install:harnesses": "node scripts/install-harnesses.mjs",
+    "install:mcp": "node scripts/install-mcp.mjs",
     "getscript": "node scripts/install-harnesses.mjs --get-script",
     "start": "node dist/index.js",
     "update": "node scripts/install-harnesses.mjs --update",
+    "prepublishOnly": "npm run build",
     "prepare": "npm run build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "roblox",
+    "dex",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "luau",
+    "executor",
+    "debugger",
+    "claude",
+    "cursor"
+  ],
+  "author": "deepseek-v4.1-flash",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/986mn/roblox-DEX-AI-MCP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/986mn/roblox-DEX-AI-MCP/issues"
+  },
+  "homepage": "https://github.com/986mn/roblox-DEX-AI-MCP#readme",
+  "engines": {
+    "node": ">=18"
+  },
   "packageManager": "pnpm@10.27.0",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

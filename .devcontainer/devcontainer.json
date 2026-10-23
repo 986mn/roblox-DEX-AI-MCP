@@ -1,5 +1,5 @@
 {
-  "name": "Roblox-MCP",
+  "name": "roblox-DEX-AI-MCP",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
 
   // 容器一创建就自动：打补丁 + 装依赖 + 编译
@@ -14,7 +14,7 @@
   // 关键：让 16384 自动转发且为 public（Roblox 客户端不带你登录态，Private 连不上）
   "portsAttributes": {
     "16384": {
-      "label": "Roblox-MCP Bridge",
+      "label": "roblox-DEX-AI-MCP Bridge",
       "visibility": "public",
       "onAutoForward": "notify"
     }

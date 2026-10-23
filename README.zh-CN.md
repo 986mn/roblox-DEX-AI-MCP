@@ -117,6 +117,27 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/986mn/roblox-DEX-AI-M
 
 ### 4. 配置 AI 客户端
 
+**一条命令搞定：**
+
+```bash
+npm run install:mcp
+```
+
+它会自动检测你装了哪些客户端（Claude Desktop、Cursor、Windsurf、Antigravity、
+Claude Code、Codex CLI、VS Code），列出编号让你选，然后逐个写进配置文件。
+它是**合并**写入 —— 文件里原有的内容全部保留，首次写入还会留一份 `.bak`。
+
+非交互用法：
+
+```bash
+npm run install:mcp -- --all                  # 全部已检测到的客户端
+npm run install:mcp -- --client cursor,codex  # 指定客户端
+npm run install:mcp -- --print                # 只打印 JSON，不写文件
+npm run install:mcp -- --remove               # 撤销
+```
+
+**或者手动添加：**
+
 ```json
 {
   "mcpServers": {
@@ -127,6 +148,18 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/986mn/roblox-DEX-AI-M
   }
 }
 ```
+
+| 客户端 | 配置文件位置 |
+|---|---|
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS）/ `%APPDATA%\Claude\claude_desktop_config.json`（Win） |
+| Cursor | `~/.cursor/mcp.json` |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
+| Antigravity | `~/.gemini/antigravity/mcp_config.json` |
+| Claude Code | `~/.claude.json` —— 或 `claude mcp add roblox-dex-ai-mcp -- node <repo>/dist/index.js` |
+| Codex CLI | `~/.codex/config.toml`（TOML 格式，不是 JSON） |
+| VS Code | `~/.vscode/mcp.json` |
+
+装完重启客户端即可。各客户端的具体提示，脚本会打印出来。
 
 ---
 

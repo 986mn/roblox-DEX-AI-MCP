@@ -4,12 +4,12 @@
 
 Open Codex and go to **Settings** > **MCP**, then add a new server:
 
-- **Name:** `roblox-executor-mcp`
+- **Name:** `roblox-dex-ai-mcp`
 - **Type:** `STDIO`
 - **Command:** `node`
-- **Args:** `/path/to/roblox-executor-mcp/dist/index.js`
+- **Args:** `/path/to/roblox-dex-ai-mcp/dist/index.js`
 
-Replace `/path/to/roblox-executor-mcp` with the actual path where you cloned the repo.
+Replace `/path/to/roblox-dex-ai-mcp` with the actual path where you cloned the repo.
 
 ## 1. Open the config file
 
@@ -20,12 +20,12 @@ The Codex CLI config is located at `~/.codex/config.toml`. Open it in your edito
 Add the following to your `config.toml`:
 
 ```toml
-[mcp_servers.roblox-executor-mcp]
+[mcp_servers.roblox-dex-ai-mcp]
 command = "node"
-args = ["/path/to/roblox-executor-mcp/dist/index.js"]
+args = ["/path/to/roblox-dex-ai-mcp/dist/index.js"]
 ```
 
-Replace `/path/to/roblox-executor-mcp` with the actual path where you cloned the repo.
+Replace `/path/to/roblox-dex-ai-mcp` with the actual path where you cloned the repo.
 
 ## 3. Restart Codex
 

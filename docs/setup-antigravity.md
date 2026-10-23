@@ -15,15 +15,15 @@ Clock on "View raw config" button and add or merge the following:
 ```json
 {
   "mcpServers": {
-    "roblox-executor-mcp": {
+    "roblox-dex-ai-mcp": {
       "command": "node",
-      "args": ["/path/to/roblox-executor-mcp/dist/index.js"]
+      "args": ["/path/to/roblox-dex-ai-mcp/dist/index.js"]
     }
   }
 }
 ```
 
-Replace `/path/to/roblox-executor-mcp` with the actual path where you cloned the repo.
+Replace `/path/to/roblox-dex-ai-mcp` with the actual path where you cloned the repo.
 
 ## 3. Reload
 
