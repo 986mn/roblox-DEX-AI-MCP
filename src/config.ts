@@ -14,7 +14,7 @@ const serverNameIdx = args.indexOf("--server-name");
 export const SERVER_NAME =
   serverNameIdx !== -1 && args[serverNameIdx + 1]
     ? args[serverNameIdx + 1]
-    : process.env.ROBLOX_MCP_SERVER_NAME || "roblox-mcp";
+    : process.env.ROBLOX_MCP_SERVER_NAME || "roblox-dex-ai-mcp";
 
 if (BASE_URL) {
   console.error(

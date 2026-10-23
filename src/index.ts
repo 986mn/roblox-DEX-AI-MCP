@@ -17,7 +17,7 @@ const server = new McpServer({
   name: SERVER_NAME,
   version: "2.0.0",
   description:
-    "Expose MCP tools for inspecting, executing Luau in, and interacting with connected Roblox game clients. Dashboard: http://localhost:16384/.",
+    "DEX-first Roblox AI bridge: read what you select in DEX, drive DEX selection, and execute Luau in connected Roblox clients. Dashboard: http://localhost:16384/.",
 });
 
 registerAllTools(server);
