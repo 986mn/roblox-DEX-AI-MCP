@@ -1,8 +1,23 @@
 # DEX — the core of this project
 
+<p align="center">
+  <img src="assets/banner.svg" alt="roblox-DEX-AI-MCP — DEX first" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="assets/demo.gif" alt="DEX ↔ AI 双向桥接演示" width="820"/>
+  <br/>
+  <sub>你在 DEX 里选中 → AI 拿到精确路径 → AI 反过来能让 DEX 跳回那个对象</sub>
+</p>
+
+> ### 🤖 这里的一切都由 AI 编写
+>
+> 三套桥接方案、四个预构建整合包、本文档及其配图 ——
+> 全部由 **`deepseek-v4.1-flash`** 产出。
+
 > 本目录是整个项目的**主体**。服务端（`src/`）只是为 DEX 服务的配套设施。
 
-[English](README.md) · **中文**
+[English](DEX_README.md) · **中文**
 
 ---
 
@@ -90,6 +105,37 @@ AC 版右下角会出现【→ MCP】按钮。
 ---
 
 ## 双向通道
+
+### 分步图解
+
+<table>
+<tr>
+<td width="50%" align="center">
+  <img src="assets/steps/step1-select.png" alt="步骤 1：选中对象" width="100%"/>
+  <br/><b>1.</b> 在 DEX 里选中任意对象
+</td>
+<td width="50%" align="center">
+  <img src="assets/steps/step2-events.png" alt="步骤 2：点 → MCP" width="100%"/>
+  <br/><b>2.</b> 点 <b>[→ MCP]</b> —— 路径进队列
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+  <img src="assets/steps/step3-properties.png" alt="步骤 3：AI 读取属性" width="100%"/>
+  <br/><b>3.</b> AI 读到真实属性
+</td>
+<td width="50%" align="center">
+  <img src="assets/steps/step4-dex-select.png" alt="步骤 4：AI 操作 DEX 选中" width="100%"/>
+  <br/><b>4.</b> AI 也能让 DEX 跳到任意对象
+</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+  <img src="assets/steps/step5-execute.png" alt="步骤 5：执行" width="100%"/>
+  <br/><b>5.</b> 然后动手 —— 改属性、跑代码、触发 Remote
+</td>
+</tr>
+</table>
 
 ```
 ① 你在 DEX 里点中 workspace.Map.NPC

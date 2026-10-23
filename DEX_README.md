@@ -1,8 +1,23 @@
 # DEX — the core of this project
 
+<p align="center">
+  <img src="assets/banner.svg" alt="roblox-DEX-AI-MCP — DEX first" width="100%"/>
+</p>
+
+<p align="center">
+  <img src="assets/demo.gif" alt="DEX ↔ AI two-way bridge demo" width="820"/>
+  <br/>
+  <sub>You select in DEX → the AI reads the exact path → the AI can send DEX back to that object</sub>
+</p>
+
+> ### 🤖 Everything here was written by AI
+>
+> The three bridge strategies, the four pre-built bundles, this document and
+> its graphics — all produced by **`deepseek-v4.1-flash`**.
+
 > This directory is the **heart** of the project. The server (`src/`) exists only to serve DEX.
 
-**English** · [中文](README.zh-CN.md)
+**English** · [中文](DEX_README.zh-CN.md)
 
 ---
 
@@ -88,8 +103,39 @@ The console should print:
 The AC build also adds an [→ MCP] button in the bottom-right corner.
 
 ---
-
 ## The two-way channel
+
+### Step by step
+
+<table>
+<tr>
+<td width="50%" align="center">
+  <img src="assets/steps/step1-select.png" alt="Step 1: select an object" width="100%"/>
+  <br/><b>1.</b> Select any object in DEX
+</td>
+<td width="50%" align="center">
+  <img src="assets/steps/step2-events.png" alt="Step 2: click → MCP" width="100%"/>
+  <br/><b>2.</b> Click <b>[→ MCP]</b> — the path is queued
+</td>
+</tr>
+<tr>
+<td width="50%" align="center">
+  <img src="assets/steps/step3-properties.png" alt="Step 3: AI reads properties" width="100%"/>
+  <br/><b>3.</b> The AI reads the real properties
+</td>
+<td width="50%" align="center">
+  <img src="assets/steps/step4-dex-select.png" alt="Step 4: AI selects in DEX" width="100%"/>
+  <br/><b>4.</b> The AI can jump DEX to any object
+</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+  <img src="assets/steps/step5-execute.png" alt="Step 5: execute" width="100%"/>
+  <br/><b>5.</b> Then act — change properties, run code, fire remotes
+</td>
+</tr>
+</table>
+
 
 ```
 ① You click workspace.Map.NPC inside DEX
