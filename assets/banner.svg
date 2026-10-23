@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420" role="img" aria-label="roblox-AI-mcp — DEX bidirectional bridge">
+  <title>roblox-AI-mcp — DEX bidirectional bridge</title>
+
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b0b0f"/>
+      <stop offset="55%" stop-color="#101018"/>
+      <stop offset="100%" stop-color="#0b0b0f"/>
+    </linearGradient>
+
+    <linearGradient id="dexAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0b5aaf"/>
+      <stop offset="100%" stop-color="#2f8ce0"/>
+    </linearGradient>
+
+    <linearGradient id="mcpAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+
+    <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2f8ce0"/>
+      <stop offset="50%" stop-color="#9d7bd8"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="60%" stop-color="#c9d6e8"/>
+      <stop offset="100%" stop-color="#8b9bb4"/>
+    </linearGradient>
+
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#ffffff" stroke-opacity="0.028" stroke-width="1"/>
+    </pattern>
+
+    <filter id="glowBlue" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="glowPurple" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+
+    <marker id="arrowHeadRight" viewBox="0 0 12 12" refX="10" refY="6"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 0 0 L 12 6 L 0 12 z" fill="#a855f7"/>
+    </marker>
+
+    <marker id="arrowHeadLeft" viewBox="0 0 12 12" refX="2" refY="6"
+            markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 12 0 L 0 6 L 12 12 z" fill="#2f8ce0"/>
+    </marker>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="420" fill="url(#bgGrad)"/>
+  <rect width="1200" height="420" fill="url(#grid)"/>
+
+  <!-- ambient glows -->
+  <ellipse cx="190" cy="250" rx="230" ry="150" fill="#0b5aaf" opacity="0.20" filter="url(#glowBlue)"/>
+  <ellipse cx="1010" cy="250" rx="230" ry="150" fill="#7c3aed" opacity="0.18" filter="url(#glowPurple)"/>
+
+  <!-- ================= title ================= -->
+  <text x="600" y="72" text-anchor="middle"
+        font-family="DejaVu Sans, Segoe UI, Helvetica, Arial, sans-serif"
+        font-size="42" font-weight="700" fill="url(#titleGrad)"
+        letter-spacing="0.5">roblox-AI-mcp</text>
+
+  <text x="600" y="104" text-anchor="middle"
+        font-family="DejaVu Sans Mono, Consolas, monospace"
+        font-size="15" fill="#7d8aa0"
+        letter-spacing="1.6">ROBLOX EXECUTOR MCP &#183; DEX BIDIRECTIONAL BRIDGE</text>
+
+  <line x1="440" y1="122" x2="760" y2="122" stroke="#ffffff" stroke-opacity="0.09" stroke-width="1"/>
+
+  <!-- ================= LEFT: DEX panel ================= -->
+  <g filter="url(#softShadow)">
+    <rect x="58" y="152" width="392" height="212" rx="10"
+          fill="#12121a" stroke="#0b5aaf" stroke-opacity="0.55" stroke-width="1.5"/>
+  </g>
+
+  <!-- panel header -->
+  <rect x="58" y="152" width="392" height="34" rx="10" fill="#0e1420"/>
+  <rect x="58" y="176" width="392" height="10" fill="#0e1420"/>
+  <text x="76" y="174" font-family="DejaVu Sans, sans-serif" font-size="13"
+        font-weight="700" fill="#8fc4f0" letter-spacing="0.8">DEX &#183; EXPLORER</text>
+
+  <circle cx="424" cy="169" r="4" fill="#2f8ce0" filter="url(#glowBlue)"/>
+  <text x="404" y="174" text-anchor="end" font-family="DejaVu Sans Mono, monospace"
+        font-size="10" fill="#4d6b8a">IN-GAME</text>
+
+  <!-- tree rows -->
+  <g font-family="DejaVu Sans Mono, monospace" font-size="13">
+    <text x="76" y="212" fill="#5b6b82">&#9662; game</text>
+    <text x="94" y="234" fill="#5b6b82">&#9662; Workspace</text>
+    <text x="112" y="256" fill="#6d7f98">&#9662; Map</text>
+
+    <!-- selected row -->
+    <rect x="122" y="266" width="238" height="24" rx="4" fill="#0b5aaf" opacity="0.30"/>
+    <rect x="122" y="266" width="3" height="24" rx="1.5" fill="#2f8ce0"/>
+    <text x="132" y="283" fill="#e8f2fb" font-weight="700">&#9679; NPC</text>
+    <text x="352" y="283" text-anchor="end" fill="#7aa7cc" font-size="11">Model</text>
+
+    <text x="132" y="306" fill="#6d7f98">NPC2</text>
+    <text x="352" y="306" text-anchor="end" fill="#4d6b8a" font-size="11">Model</text>
+    <text x="112" y="328" fill="#6d7f98">&#9656; Spawns</text>
+  </g>
+
+  <!-- selection badge -->
+  <rect x="300" y="196" width="132" height="22" rx="11" fill="#0b5aaf" opacity="0.22"/>
+  <text x="366" y="211" text-anchor="middle" font-family="DejaVu Sans, sans-serif"
+        font-size="11" fill="#8fc4f0">selected &#215;1</text>
+
+  <!-- ================= CENTER: bidirectional arrows ================= -->
+  <g>
+    <!-- upper arrow: DEX -> MCP -->
+    <line x1="470" y1="228" x2="712" y2="228"
+          stroke="url(#arrowGrad)" stroke-width="2.6"
+          marker-end="url(#arrowHeadRight)" stroke-linecap="round"/>
+    <rect x="520" y="204" width="146" height="20" rx="10" fill="#181826"/>
+    <text x="593" y="218" text-anchor="middle"
+          font-family="DejaVu Sans Mono, monospace" font-size="11"
+          fill="#b79bea">you click &#8594; AI knows</text>
+
+    <!-- lower arrow: MCP -> DEX -->
+    <line x1="712" y1="292" x2="470" y2="292"
+          stroke="url(#arrowGrad)" stroke-width="2.6"
+          marker-end="url(#arrowHeadLeft)" stroke-linecap="round"/>
+    <rect x="520" y="312" width="146" height="20" rx="10" fill="#181826"/>
+    <text x="593" y="326" text-anchor="middle"
+          font-family="DejaVu Sans Mono, monospace" font-size="11"
+          fill="#7fb8e8">AI acts &#8594; DEX jumps</text>
+  </g>
+
+  <!-- ================= RIGHT: MCP panel ================= -->
+  <g filter="url(#softShadow)">
+    <rect x="750" y="152" width="392" height="212" rx="10"
+          fill="#12121a" stroke="#7c3aed" stroke-opacity="0.55" stroke-width="1.5"/>
+  </g>
+
+  <rect x="750" y="152" width="392" height="34" rx="10" fill="#160f24"/>
+  <rect x="750" y="176" width="392" height="10" fill="#160f24"/>
+  <text x="768" y="174" font-family="DejaVu Sans, sans-serif" font-size="13"
+        font-weight="700" fill="#c4a5f5" letter-spacing="0.8">MCP &#183; AI SESSION</text>
+
+  <circle cx="1116" cy="169" r="4" fill="#a855f7" filter="url(#glowPurple)"/>
+  <text x="1096" y="174" text-anchor="end" font-family="DejaVu Sans Mono, monospace"
+        font-size="10" fill="#6b5a8a">29 TOOLS</text>
+
+  <!-- terminal lines -->
+  <g font-family="DejaVu Sans Mono, monospace" font-size="12">
+    <text x="768" y="212" fill="#6b5a8a">&#62; dex-events</text>
+    <text x="784" y="232" fill="#8fe3b0">#1 selection (button)</text>
+    <text x="800" y="252" fill="#e8f2fb">game.Workspace.Map.NPC</text>
+
+    <text x="768" y="282" fill="#6b5a8a">&#62; dex-select</text>
+    <text x="784" y="302" fill="#8fe3b0">OK selected 1 object(s)</text>
+
+    <text x="768" y="332" fill="#6b5a8a">&#62; execute</text>
+    <text x="784" y="352" fill="#e8f2fb">NPC.Health = 0</text>
+  </g>
+
+  <!-- ================= bottom stat strip ================= -->
+  <g font-family="DejaVu Sans, sans-serif" font-size="11.5">
+    <rect x="58" y="384" width="1084" height="1" fill="#ffffff" fill-opacity="0.07"/>
+
+    <text x="70" y="405" fill="#5b6b82">DEX</text>
+    <text x="104" y="405" fill="#9fb0c6">12,684 lines</text>
+
+    <text x="248" y="405" fill="#5b6b82">TOOLS</text>
+    <text x="298" y="405" fill="#9fb0c6">29</text>
+
+    <text x="366" y="405" fill="#5b6b82">ROUTES</text>
+    <text x="426" y="405" fill="#9fb0c6">34</text>
+
+    <text x="494" y="405" fill="#5b6b82">BUNDLES</text>
+    <text x="566" y="405" fill="#9fb0c6">A &#183; C &#183; AC</text>
+
+    <text x="1130" y="405" text-anchor="end" fill="#4d6b8a">MIT License</text>
+  </g>
+</svg>

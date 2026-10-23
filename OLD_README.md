@@ -1,3 +1,10 @@
+> **Note:** This is the upstream README, kept for historical reference.
+> Its `git clone` command points at `notpoiu/roblox-executor-mcp`, which no longer exists (404).
+> The actual upstream is **[Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP](https://github.com/Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP)**.
+> For current documentation see [README.md](README.md).
+
+---
+
 <p align="center">
   <img src="docs/banner.svg" alt="Roblox Executor MCP" width="900"/>
 </p>
