@@ -23,3 +23,7 @@ connector.luau.bak
 # temp
 *.log
 .tmp/
+
+# 本地导出的聊天记录（不入库）
+chatlog.md
+*.chatlog.md
