@@ -14,13 +14,13 @@ ROOT="$(pwd)"
 export COREPACK_ENABLE_STRICT=0
 
 echo "=========================================="
-echo " Roblox-MCP · Codespaces 初始化"
+echo " roblox-DEX-AI-MCP · Codespaces 初始化"
 echo " 仓库: $ROOT"
 echo "=========================================="
 
 # ---------- 1. 协议自适应补丁 ----------
 echo
-echo "[1/3] 应用协议自适应补丁"
+echo "[1/4] 应用协议自适应补丁"
 if [ -f .devcontainer/patch-connector.mjs ]; then
   # 保留一份原始文件备份
   [ -f connector.luau.bak ] || cp connector.luau connector.luau.bak 2>/dev/null || true
@@ -33,7 +33,7 @@ fi
 
 # ---------- 2. 依赖 ----------
 echo
-echo "[2/3] 安装依赖"
+echo "[2/4] 安装依赖"
 if [ -d node_modules ] && [ -f node_modules/.package-lock.json ]; then
   echo "  node_modules 已存在，跳过"
 else

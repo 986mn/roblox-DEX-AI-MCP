@@ -1,17 +1,19 @@
 {
   "name": "roblox-DEX-AI-MCP",
+
+  // Node 22 —— MCP SDK 与 TypeScript 都能跑
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
 
-  // 容器一创建就自动：打补丁 + 装依赖 + 编译
+  // 容器创建时：打协议补丁 → 装依赖 → 编译 → 校验 DEX 层
   "postCreateCommand": "bash .devcontainer/setup.sh",
 
-  // 每次启动（含从休眠唤醒）自动：拉起桥接服务
+  // 每次启动（含从休眠唤醒）：拉起桥接服务 + 设端口 public + 启动保活
   "postStartCommand": "bash .devcontainer/start.sh",
 
-  // 服务监听的端口
+  // 桥接端口
   "forwardPorts": [16384],
 
-  // 关键：让 16384 自动转发且为 public（Roblox 客户端不带你登录态，Private 连不上）
+  // 关键：Roblox 客户端不携带 GitHub 登录态，端口必须是 public 才连得上
   "portsAttributes": {
     "16384": {
       "label": "roblox-DEX-AI-MCP Bridge",
@@ -22,8 +24,13 @@
 
   "customizations": {
     "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "sumneko.lua"
+      ],
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash"
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "npm.packageManager": "npm"
       }
     }
   },
@@ -32,5 +39,11 @@
     "cpus": 2,
     "memory": "4gb",
     "storage": "16gb"
-  }
+  },
+
+  // 首次打开时自动跑的提示，省得用户不知道下一步做什么
+  "secrets": {},
+  "features": {},
+
+  "remoteUser": "node"
 }

@@ -40,6 +40,7 @@
 
 - [为什么以 DEX 为中心](#为什么以-dex-为中心)
 - [快速开始](#快速开始)
+- [GitHub Codespaces](#github-codespaces)
 - [DEX 集成（主体）](#dex-集成主体)
 - [双向工作流](#双向工作流)
 - [MCP 工具](#mcp-工具)
@@ -160,6 +161,67 @@ npm run install:mcp -- --remove               # 撤销
 | VS Code | `~/.vscode/mcp.json` |
 
 装完重启客户端即可。各客户端的具体提示，脚本会打印出来。
+
+---
+
+## GitHub Codespaces
+
+不想在本地装任何东西？把整个服务跑在云端容器里，Roblox 通过 HTTPS 连过来。
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/986mn/roblox-DEX-AI-MCP)
+
+或者：**Code** → **Codespaces** → **Create codespace on main**
+
+### 会自动完成什么
+
+| 时机 | 动作 |
+|---|---|
+| **容器创建**（`postCreate`） | 给 connector.luau 打 HTTPS 补丁 → 装依赖 → 编译 TS → 校验 DEX 层 |
+| **每次启动**（`postStart`） | 清理旧实例 → 启动桥接 → 等就绪 → 设端口 public → 启动保活 |
+
+大约 1-3 分钟。完成后终端会打印你的地址：
+
+```
+ 仪表盘   : https://xxxxx-16384.app.github.dev/
+ 加载器   : https://xxxxx-16384.app.github.dev/script.luau
+```
+
+### 连 Roblox
+
+在执行器里：
+
+```lua
+getgenv().BridgeURL = "https://xxxxx-16384.app.github.dev"
+loadstring(game:HttpGet("https://raw.githubusercontent.com/986mn/roblox-DEX-AI-MCP/main/builds/dex_AC.lua"))()
+```
+
+然后打开 `https://xxxxx-16384.app.github.dev/api/status`，`clientCount` 从 `0` 变 `1` 就说明连上了。
+
+### 两个必须做对的点
+
+**1. `https://` 前缀必须带。** Codespaces 只提供 HTTPS，但上游 connector 把协议硬编码成了 `http://`。`.devcontainer/patch-connector.mjs` 会自动打补丁，但它是**从你填的 `BridgeURL` 推导协议**的 —— 所以要带前缀。
+
+**2. 端口必须是 public。** Roblox 客户端不携带 GitHub 登录态。端口是 private 的话，它拿到的是登录页而不是你的服务。`devcontainer.json` 里已经设了 `"visibility": "public"`，`start.sh` 还会用 `gh` 再强制执行一次。
+
+### 睡了 30 分钟醒来服务没了？
+
+Codespaces 空闲会自动停，而且**唤醒后 `postStart` 不一定重跑**（GitHub 的已知行为）。跑这个：
+
+```bash
+bash .devcontainer/ensure-running.sh
+```
+
+它会检测服务是否活着，没活就自动拉起。只看状态：
+
+```bash
+bash .devcontainer/ensure-running.sh --status
+```
+
+### 12 小时上限
+
+免费 Codespaces 有 12 小时硬性生存期，无法绕过。`keepalive.sh` 只能防空闲休眠，绕不过这个。
+
+完整指南：**[`docs/codespaces.md`](docs/codespaces.md)**
 
 ---
 

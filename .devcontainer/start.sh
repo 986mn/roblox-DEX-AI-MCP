@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # ============================================================
-#  Roblox-MCP · Codespaces postStart 脚本
+#  roblox-DEX-AI-MCP · Codespaces postStart 脚本
+#
 #  每次容器启动（含从休眠唤醒）时执行：
-#    清理旧实例 → 确保已编译 → 后台拉起桥接服务 → 尝试公开端口
+#    清旧实例 → 确保编译 → 拉起服务 → 等就绪 → 端口 public
+#    → 启动保活 → 打印连接信息
+#
 #  幂等，可重复执行。
 # ============================================================
 set -u
@@ -16,12 +19,12 @@ export COREPACK_ENABLE_STRICT=0
 mkdir -p "$LOG_DIR"
 
 echo "=========================================="
-echo " Roblox-MCP · 启动桥接服务"
+echo " roblox-DEX-AI-MCP · 启动桥接服务"
 echo "=========================================="
 
-# ---------- 0. 前置检查：必要时补做 setup ----------
+# ---------- 0. 前置：没有编译产物就先初始化 ----------
 if [ ! -f dist/index.js ]; then
-  echo "  ! 未发现编译产物，先执行初始化..."
+  echo "  ! 未发现 dist/index.js，先执行初始化..."
   bash .devcontainer/setup.sh || exit 1
 fi
 
@@ -47,7 +50,7 @@ for _ in $(seq 1 20); do
   still=0
   for f in /proc/[0-9]*/cmdline; do
     [ -r "$f" ] || continue
-    case "$(tr '\0' ' ' < "$f" 2>/dev/null)" in *"dist/index.js"*) still=1;; esac
+    case "$(tr '\0' ' ' < "$f" 2>/dev/null)" in *"dist/index.js"*) still=1 ;; esac
   done
   [ "$still" = "0" ] && break
   sleep 0.5
@@ -56,15 +59,16 @@ done
 # ---------- 2. 启动服务 ----------
 echo "  启动服务..."
 : > "$LOG_DIR/server.log"
-nohup node dist/index.js > "$LOG_DIR/server.log" 2>&1 &
+# MCP 是 stdio 协议：stdin 关闭会退出，所以用 /dev/zero 保持常开
+nohup node dist/index.js < /dev/zero > "$LOG_DIR/server.log" 2>&1 &
 PID=$!
 echo "$PID" > "$LOG_DIR/server.pid"
 echo "  PID=$PID"
 
-# 轮询等待就绪（最多 30 秒）
+# ---------- 3. 等就绪（最多 30 秒） ----------
 READY=0
 for _ in $(seq 1 60); do
-  if curl -sS -m 2 -o /dev/null "http://127.0.0.1:${PORT}/api/status" 2>/dev/null; then
+  if curl -sf -m 2 -o /dev/null "http://127.0.0.1:${PORT}/api/status" 2>/dev/null; then
     READY=1
     break
   fi
@@ -82,18 +86,28 @@ echo "  ---- 状态 ----"
 curl -sS -m 5 "http://127.0.0.1:${PORT}/api/status" | sed 's/^/    /'
 echo
 
-# ---------- 3. 端口可见性 ----------
+# ---------- 4. 端口可见性（Roblox 客户端不带你登录态，必须 public） ----------
+echo "  设置端口 ${PORT} 为 public..."
 if command -v gh >/dev/null 2>&1 && [ -n "${CODESPACE_NAME:-}" ]; then
   if gh codespace ports visibility "${PORT}:public" -c "$CODESPACE_NAME" >/dev/null 2>&1; then
-    echo "  ✓ 端口 ${PORT} 已设为 public"
+    echo "    ✓ 已设为 public"
   else
-    echo "  ! 自动设置失败，请到 PORTS 面板手动设为 Public"
+    echo "    ! 自动设置失败，请到 PORTS 面板手动设为 Public"
   fi
 else
-  echo "  ! 请到 PORTS 面板 → 端口 ${PORT} → 右键 → Port Visibility → Public"
+  echo "    ! 请到 PORTS 面板 → 端口 ${PORT} → 右键 → Port Visibility → Public"
 fi
 
-# ---------- 4. 打印连接信息 ----------
+# ---------- 5. 保活（防空闲休眠） ----------
+echo
+echo "  启动保活进程（防止空闲休眠）..."
+if [ -f "$ROOT/keepalive.sh" ]; then
+  KEEPALIVE_INTERVAL="${KEEPALIVE_INTERVAL:-240}" bash "$ROOT/keepalive.sh" --daemon 2>/dev/null | sed 's/^/    /'
+else
+  echo "    ! 未找到 keepalive.sh，跳过"
+fi
+
+# ---------- 6. 连接信息 ----------
 DOMAIN="${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}"
 if [ -n "${CODESPACE_NAME:-}" ]; then
   BASE="https://${CODESPACE_NAME}-${PORT}.${DOMAIN}"
@@ -101,17 +115,9 @@ else
   BASE="http://localhost:${PORT}"
 fi
 
-# ---------- 5. 启动保活（防止空闲休眠） ----------
 echo
-echo "  启动保活进程（防止空闲休眠）..."
-if [ -f "$ROOT/keepalive.sh" ]; then
-  KEEPALIVE_INTERVAL="${KEEPALIVE_INTERVAL:-240}" bash "$ROOT/keepalive.sh" --daemon \
-    | sed 's/^/    /'
-else
-  echo "    ! 未找到 keepalive.sh，跳过"
-fi
-
-echo
+echo "=========================================="
+echo " 部署完成"
 echo "=========================================="
 echo " 仪表盘   : ${BASE}/"
 echo " 加载器   : ${BASE}/script.luau"
@@ -120,7 +126,12 @@ echo "=========================================="
 echo " 在 Roblox 执行器里注入（BridgeURL 必须带 https://）："
 echo "   getgenv().BridgeURL = \"${BASE}\""
 echo "   loadstring(game:HttpGet(\"${BASE}/script.luau\"))()"
+echo
+echo " 或者直接用 DEX 整合包（自带 DEX 界面 + 桥接）："
+echo "   getgenv().BridgeURL = \"${BASE}\""
+echo "   loadstring(game:HttpGet(\"https://raw.githubusercontent.com/986mn/roblox-DEX-AI-MCP/main/builds/dex_AC.lua\"))()"
 echo "=========================================="
+echo " 健康检查 : bash .devcontainer/ensure-running.sh --status"
 echo " 保活状态 : bash keepalive.sh --status"
 echo " 停止保活 : bash keepalive.sh --stop"
 echo "=========================================="

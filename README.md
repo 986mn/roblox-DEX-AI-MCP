@@ -40,6 +40,7 @@
 
 - [Why DEX is the center](#why-dex-is-the-center)
 - [Quick start](#quick-start)
+- [GitHub Codespaces](#github-codespaces)
 - [DEX integration (the core)](#dex-integration-the-core)
 - [The two-way workflow](#the-two-way-workflow)
 - [MCP tools](#mcp-tools)
@@ -161,6 +162,67 @@ npm run install:mcp -- --remove               # undo
 | VS Code | `~/.vscode/mcp.json` |
 
 Restart the client afterwards. Per-client notes are printed by the installer.
+
+---
+
+## GitHub Codespaces
+
+Don't want to install anything locally? Run the whole thing in a cloud container and connect Roblox to it over HTTPS.
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/986mn/roblox-DEX-AI-MCP)
+
+Or: **Code** → **Codespaces** → **Create codespace on main**
+
+### What happens automatically
+
+| When | What |
+|---|---|
+| **Container created** (`postCreate`) | Patch connector.luau for HTTPS → install deps → compile TS → verify the DEX layer |
+| **Every start** (`postStart`) | Kill stale instances → start the bridge → wait until ready → set port public → start keepalive |
+
+Takes 1-3 minutes. Then the terminal prints your URL:
+
+```
+ 仪表盘   : https://xxxxx-16384.app.github.dev/
+ 加载器   : https://xxxxx-16384.app.github.dev/script.luau
+```
+
+### Connect Roblox
+
+In your executor:
+
+```lua
+getgenv().BridgeURL = "https://xxxxx-16384.app.github.dev"
+loadstring(game:HttpGet("https://raw.githubusercontent.com/986mn/roblox-DEX-AI-MCP/main/builds/dex_AC.lua"))()
+```
+
+Then check `https://xxxxx-16384.app.github.dev/api/status` — `clientCount` going from `0` to `1` means it's connected.
+
+### Two things that must be right
+
+**1. `https://` prefix is mandatory.** Codespaces only serves HTTPS, but the upstream connector hardcoded `http://`. `.devcontainer/patch-connector.mjs` patches this automatically, but it derives the scheme from what you put in `BridgeURL` — so include the prefix.
+
+**2. The port must be public.** Roblox clients carry no GitHub session. Private port → they get a login page instead of your server. `devcontainer.json` already sets `"visibility": "public"`, and `start.sh` tries to enforce it via `gh`.
+
+### Woke up after 30 minutes and the service is gone?
+
+Codespaces stops when idle, and `postStart` **doesn't reliably re-run on wake** (known GitHub behaviour). Run:
+
+```bash
+bash .devcontainer/ensure-running.sh
+```
+
+It checks whether the service is alive and starts it if not. Status only:
+
+```bash
+bash .devcontainer/ensure-running.sh --status
+```
+
+### The 12-hour cap
+
+Free Codespaces have a hard 12-hour lifetime that cannot be bypassed. `keepalive.sh` only prevents idle sleep, not this.
+
+Full guide: **[`docs/codespaces.md`](docs/codespaces.md)**
 
 ---
 
