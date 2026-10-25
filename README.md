@@ -9,6 +9,18 @@
   <sub>The AI knows what you clicked in DEX — and can click things in DEX for you</sub>
 </p>
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"/></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%E2%89%A518-brightgreen.svg" alt="Node"/></a>
+  <img src="https://img.shields.io/badge/MCP-29%20tools-purple.svg" alt="MCP tools"/>
+  <img src="https://img.shields.io/badge/DEX-12%2C684%20lines-0b5aaf.svg" alt="DEX lines"/>
+  <img src="https://img.shields.io/badge/built%20by-deepseek--v4.1--flash-ff6b35.svg" alt="Built by AI"/>
+</p>
+
+<p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">中文</a>
+</p>
+
 ---
 
 > ### 🤖 This entire project was built by AI
@@ -268,7 +280,7 @@ D.App("Explorer", true)               -- open/close a panel
 ## The two-way workflow
 
 <p align="center">
-  <img src="assets/demo.gif" alt="Five-step bidirectional workflow" width="100%"/>
+  <img src="assets/demo.gif" alt="Five-step bidirectional workflow: select in DEX, AI reads the path, inspects properties, drives DEX selection, executes code" width="100%"/>
 </p>
 
 <p align="center">
@@ -381,22 +393,41 @@ WS   /mcp-relay              primary/secondary relay
 
 ## Project structure
 
+DEX sits at the **root**, not in a subfolder — it's the main thing here.
+
 ```
 roblox-DEX-AI-MCP/
-├── dex.lua                       the DEX source
+├── dex.lua                       ⭐ the DEX source (12,684 lines, unmodified)
 ├── dex_mcp_A.lua                 patch A — read/write API
 ├── dex_mcp_B.lua                 patch B — runtime wrapper
 ├── dex_mcp_C.lua                 patch C — button UI
 ├── DEX_README.md                 DEX docs (English)
 ├── DEX_README.zh-CN.md           DEX docs (中文)
-├── builds/                       pre-built, ready to run
-│   ├── dex_AC.lua                DEX + API + button — recommended
-│   ├── dex_A.lua                 DEX + API
-│   ├── dex_B.lua                 DEX + API, self-contained
-│   └── dex_C.lua                 DEX + button
-├── dex-mcp/                      standalone bundle
+├── builds/                       ⭐ pre-built, ready to run
+│   ├── dex_AC.lua                DEX + API + button (510 KB) — recommended
+│   ├── dex_A.lua                 DEX + API (494 KB)
+│   ├── dex_B.lua                 DEX + API, self-contained (490 KB)
+│   └── dex_C.lua                 DEX + button (493 KB)
+├── dex-mcp/                      standalone bundle (docs + copies + own graphics)
+│   ├── README.md / README.zh-CN.md
+│   ├── builds/                    same four bundles
+│   ├── assets/                    banner + demo.gif
+│   └── dex_mcp_*.lua              the three patches
 ├── src/                          MCP server (serves DEX)
+│   ├── http/
+│   │   ├── dex-store.ts          DEX event store
+│   │   └── routes/dex/
+│   │       ├── event.ts          POST/GET /dex/event
+│   │       └── events.ts         GET/DELETE /dex/events
+│   ├── tools/impl/dex/
+│   │   ├── dex-events.ts
+│   │   ├── dex-select.ts
+│   │   └── dex-snapshot.ts
+│   ├── bridge/                   primary/secondary relay
+│   ├── http/                     router + dashboard
+│   └── semantic/                 vector search
 ├── assets/                       banner, demo.gif, step screenshots
+│   └── dex-mcp/                  dex-mcp-specific graphics
 ├── connector.luau                client Luau (protocol-patched)
 ├── .devcontainer/                Codespaces auto-deploy
 ├── keepalive.sh                  idle guard + self-healing
@@ -429,6 +460,26 @@ roblox-DEX-AI-MCP/
 
 **Beyond that, all design, coding, debugging, testing, documentation and graphics were done by the AI.**
 
+### Key engineering decisions (made autonomously by the AI)
+
+| Decision | Why |
+|---|---|
+| Append after `Main.Init()` | Reading the source showed DEX discards its return value — nothing was ever exposed on `getgenv()` |
+| Reuse `Explorer.GetInstancePath` | Line 1598 already has a working path generator; no need to reinvent it |
+| Hook `ShowRightClick` | The context menu calls `Clear()` and rebuilds on every right-click, so a one-time `Register` is useless |
+| Fix the `local API` shadowing bug | Testing revealed it clobbered DEX's global `API`, making `Props()` return nil |
+| Protocol auto-detect patch | The connector hardcoded `http://`, but Codespaces only serves `https://` |
+| Push via the Git Data API | `git push` died with a TLS error on large files; switched to blob→tree→commit→ref |
+
+### Testing method
+
+Not just reading code — **actually executing it**:
+
+- Built a mock Roblox environment with Python `lupa`
+- **Extracted the patch code from the complete builds** and ran it
+- 11 tests for A, 8 tests for C, plus an A+C coexistence test
+- Nothing was delivered until all of them passed
+
 ---
 
 ## Verification record
@@ -438,11 +489,18 @@ roblox-DEX-AI-MCP/
 | `tsc --noEmit` | ✅ **0 errors** |
 | `npm run build` | ✅ success |
 | Route loading | ✅ **34 routes** |
+| `POST /dex/event` | ✅ returns 204 |
+| `GET /dex/events?since=N` | ✅ incremental filter works |
+| `DELETE /dex/events` | ✅ `{"cleared":2}` |
 | MCP `tools/list` | ✅ **29 tools** |
 | `dex_A.lua` syntax | ✅ |
 | `dex_C.lua` syntax | ✅ |
 | `dex_AC.lua` syntax | ✅ |
+| A functional tests | ✅ **11/11** |
+| C functional tests | ✅ **8/8** |
 | A+C coexistence | ✅ pass |
+| Patch byte integrity | ✅ SHA256 match |
+| `Main.Init()` uniqueness | ✅ exactly once per file |
 
 ---
 
@@ -472,15 +530,62 @@ roblox-DEX-AI-MCP/
 ssh -L 16384:localhost:16384 user@target-machine
 ```
 
+Setting a Codespaces port to `public` means **anyone with the URL** can run code in your Roblox session.
+Stop the Codespace when you're done.
+
 ---
 
 ## Credits
 
+### Original author
+
+<table>
+<tr>
+<td width="90" align="center">
+  <a href="https://github.com/Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP">
+    <img src="https://avatars.githubusercontent.com/u/184758083?v=4" width="72" style="border-radius:50%" alt="Shayeem"/>
+  </a>
+</td>
+<td>
+  <strong>Shayeem</strong> — <a href="https://github.com/Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP">@Muhammad-Tanvirul-Islam-Shayeem</a><br/>
+  <em>Author of the Roblox Executor MCP server this project is built on.</em><br/>
+  Repo: <a href="https://github.com/Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP"><code>Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP</code></a>
+</td>
+</tr>
+</table>
+
+> **This repository is a fork of [Shayeem/Roblox-MCP](https://github.com/Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP).**
+>
+> Every line of `src/` and `connector.luau` — the bridge, the tool catalog, the dashboard,
+> the in-game connector — is **his work**. 14 stars, 105 files, the canonical copy.
+> All this project does is add a DEX layer on top.
+
+### The three pillars
+
 | Project | Author | Role |
 |---|---|---|
-| **[Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP](https://github.com/Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP)** | **Shayeem** | **MCP server foundation** |
-| [LorekeeperZinnia/Dex](https://github.com/LorekeeperZinnia/Dex) | Moon | **DEX itself** |
+| **[Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP](https://github.com/Muhammad-Tanvirul-Islam-Shayeem/Roblox-MCP)** | **Shayeem** | **MCP server foundation** — forked directly, `parent` and `source` both point here |
+| [LorekeeperZinnia/Dex](https://github.com/LorekeeperZinnia/Dex) | Moon | **DEX itself** — 12,684 lines, unobfuscated, the core of this project |
 | [notpoiu/cobalt](https://github.com/notpoiu/cobalt) | notpoiu | Remote Spy backend |
+
+### Lineage
+
+```
+Shayeem/Roblox-MCP                     <-- THIS REPO FORKS FROM HERE
+Muhammad-Tanvirul-Islam-Shayeem        14 stars, 105 files, 1st Upload 2026-07-17
+        |
+        v
+986mn/roblox-DEX-AI-MCP                 DEX layer added on top
+        ^
+        |  (Potato5466794/Roblox-MCP is an unrelated 1-star fork;
+        |   notpoiu/roblox-executor-mcp is the deleted original concept)
+```
+
+### Also
+
+| Project | Role |
+|---|---|
+| [luau/UniversalSynSaveInstance](https://github.com/luau/UniversalSynSaveInstance) | SaveInstance |
 
 ---
 
@@ -491,5 +596,6 @@ MIT
 ---
 
 <p align="center">
-  <sub>For self-hosted test environments only. Using this in public games may violate the Roblox Terms of Service.</sub>
+  <sub>For self-hosted test environments only. Using this in public games may violate the Roblox Terms of Service.</sub><br/>
+  <sub>Every line of code and documentation here was written by <code>deepseek-v4.1-flash</code></sub>
 </p>
